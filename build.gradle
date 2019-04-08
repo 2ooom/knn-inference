@@ -1,0 +1,60 @@
+apply plugin: 'java'
+apply plugin: 'application'
+
+buildscript {
+    repositories {
+        jcenter()
+    }
+    dependencies {
+        classpath 'com.github.jengelman.gradle.plugins:shadow:2.0.1'
+    }
+}
+ 
+apply plugin: 'com.github.johnrengelman.shadow'
+
+mainClassName = 'com.criteo.knn.HelloKnn'
+
+repositories {
+   jcenter()
+}
+
+ext {
+    artifactId = "knn-inference"
+    groupId = "com.criteo.knn"
+}
+
+dependencies {
+    compile group: 'org.openjdk.jmh', name: 'jmh-core', version: '1.21'
+    compile group: 'org.openjdk.jmh', name: 'jmh-generator-annprocess', version: '1.21'
+    compile group: 'net.pishen', name: 'annoy4s_2.11', version: '0.8.0'
+    //compile fileTree(dir: 'libs', include: '*.jar')
+}
+
+def AnnoyJniVersion = "v0.3"
+def HnswJniVersion = "v0.2"
+
+class Download extends DefaultTask {
+    @Input
+    String sourceUrl
+
+    @OutputFile
+    File target
+
+    @TaskAction
+    void download() {
+        ant.get(src: sourceUrl, dest: target)
+    }
+}
+
+task downloadAnnoy(type: Download) {
+    sourceUrl = "https://github.com/2ooom/annoyjni/releases/download/${AnnoyJniVersion}/annoyjni-all.jar"
+    target = new File("libs/annoyjni-all.jar")
+}
+
+task downloadHnsw(type: Download) {
+    sourceUrl = "https://github.com/2ooom/hnsw-jni/releases/download/${HnswJniVersion}/hnswlib-jni-all.jar"
+    target = new File("libs/hnsw-jni-all.jar")
+}
+
+compileJava.dependsOn downloadHnsw
+compileJava.dependsOn downloadAnnoy

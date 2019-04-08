@@ -1,0 +1,54 @@
+#osx nasty .DS_Store
+.DS_Store
+
+#VS code
+.vscode
+
+#maven trash
+/target
+/build
+target/
+project/
+
+# IntelliJ specific
+.idea
+*.iml
+*.ipr
+*.iws
+
+# Eclipse specific
+*.settings
+*.classpath
+*.project
+*.checkstyle
+
+#jvm & general trash
+*.class
+*.jar
+*.log
+**.swp
+logs/
+*#
+*~
+
+#java native error dumps
+hs_err_pid*
+
+#ipython
+__pycache__
+.ipynb_checkpoints
+*.pyc
+*.egg-info
+
+# Gradle-specific
+.gradle
+gradle.properties
+build/
+classes/
+gradle
+gradlew.bat
+gradlew
+
+#tests
+retrieval/test/dir
+.gradle/
