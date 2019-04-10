@@ -1,6 +1,7 @@
 package com.criteo.knn;
 
 import com.criteo.hnsw.HnswIndex;
+import com.criteo.hnsw.KnnResult;
 import org.openjdk.jmh.annotations.*;
 import org.tensorflow.Graph;
 import org.tensorflow.Session;
@@ -69,14 +70,11 @@ public class TfLinearTransformBenchmark  {
     @Fork(value = 1, warmups = 1)
     @BenchmarkMode(Mode.AverageTime)
     @OutputTimeUnit(TimeUnit.MICROSECONDS)
-    public void lookupAndPredict() {
+    public float[] indexLookupAndPredict() {
         float[][] productEmbeddings = new float[nbProducts][];
-        long nbItems = index.getNbItems();
         for(int i = 0; i < nbProducts; i++) {
-
-            long id = Math.abs(r.nextLong() % nbItems);
             productEmbeddings[i] = new float[result_dimension];
-            float[] productEmbedding = index.getItem(id);
+            float[] productEmbedding = index.getItem(BenchmarkBase.getRandomId());
             for(int j = 0; j < productEmbedding.length; j++ ){
                 productEmbeddings[i][j] = productEmbedding[j];
             }
@@ -84,15 +82,24 @@ public class TfLinearTransformBenchmark  {
                 productEmbeddings[i][j] = r.nextFloat();
             }
         }
-        float[] result = predict(productEmbeddings);
+        return predict(productEmbeddings);
     }
 
     @Benchmark
     @Fork(value = 1, warmups = 1)
     @BenchmarkMode(Mode.AverageTime)
     @OutputTimeUnit(TimeUnit.MICROSECONDS)
-    public void predictAndMaterialize() {
-        float[] result = predict(productEmbeddings);
+    public KnnResult[] predictAndKnnFromRandomItems() {
+        float[] query = indexLookupAndPredict();
+        return index.knnQuery(query, BenchmarkBase.k);
+    }
+
+    @Benchmark
+    @Fork(value = 1, warmups = 1)
+    @BenchmarkMode(Mode.AverageTime)
+    @OutputTimeUnit(TimeUnit.MICROSECONDS)
+    public float[] predictAndMaterialize() {
+        return predict(productEmbeddings);
     }
 
     public float[] predict(float[][] input) {
@@ -113,7 +120,7 @@ public class TfLinearTransformBenchmark  {
 
     public Tensor fetch(Tensor inputTensor) {
         return session.runner()
-                .feed("product_embeddings", inputTensor)
-                .fetch("user_embeddings").run().get(0);
+            .feed("product_embeddings", inputTensor)
+            .fetch("user_embeddings").run().get(0);
     }
 }

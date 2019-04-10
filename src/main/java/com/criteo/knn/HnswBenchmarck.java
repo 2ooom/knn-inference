@@ -34,28 +34,45 @@ public class HnswBenchmarck extends BenchmarkBase {
     @Fork(value = 1, warmups = 1)
     @BenchmarkMode(Mode.AverageTime)
     @OutputTimeUnit(TimeUnit.MICROSECONDS)
-    public void getNnsByRandomVector() {
+    public KnnResult[] getNnsByRandomVector() {
         float[] query = getRandomVector(dimension);
-        KnnResult[] results = index.knnQuery(query, k);
+        return index.knnQuery(query, k);
     }
 
     @Benchmark
     @Fork(value = 1, warmups = 1)
     @BenchmarkMode(Mode.AverageTime)
     @OutputTimeUnit(TimeUnit.MICROSECONDS)
-    public void getNnsByRandomItem() {
-        long id = Math.abs(r.nextLong() % nbItems);
-        float[] query = index.getItem(id);
-
-        KnnResult[] results = index.knnQuery(query, k);
+    public KnnResult[] aggregateItemsAndKnn() {
+        int nbProducts = 50;
+        float[] query = new float[dimension];
+        for(int i = 0; i < nbProducts; i++) {
+            float[] productEmbedding = index.getItem(getRandomId());
+            for(int j = 0; j < productEmbedding.length; j++ ){
+                query[j] += productEmbedding[j];
+            }
+        }
+        for(int i = 0; i < dimension; i++) {
+            query[i] /= nbItems;
+        }
+        return index.knnQuery(query, k);
     }
 
     @Benchmark
     @Fork(value = 1, warmups = 1)
     @BenchmarkMode(Mode.AverageTime)
     @OutputTimeUnit(TimeUnit.MICROSECONDS)
-    public void getItem() {
-        long id = Math.abs(r.nextLong() % nbItems);
-        float[] item = index.getItem(id);
+    public KnnResult[] getNnsByRandomItem() {
+        float[] query = getItem();
+
+        return index.knnQuery(query, k);
+    }
+
+    @Benchmark
+    @Fork(value = 1, warmups = 1)
+    @BenchmarkMode(Mode.AverageTime)
+    @OutputTimeUnit(TimeUnit.MICROSECONDS)
+    public float[] getItem() {
+        return index.getItem(getRandomId());
     }
 }

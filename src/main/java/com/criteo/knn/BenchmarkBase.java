@@ -22,4 +22,8 @@ public abstract class BenchmarkBase {
         }
         return vector;
     }
+
+    public static long getRandomId() {
+        return Math.abs(r.nextLong() % nbItems);
+    }
 }

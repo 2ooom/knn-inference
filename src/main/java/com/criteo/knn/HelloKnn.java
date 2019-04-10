@@ -9,15 +9,15 @@ import java.io.IOException;
 
 public class HelloKnn {
     public static void main(String[] args) throws IOException, RunnerException {
-        //org.openjdk.jmh.Main.main(args);
-        Options opt = new OptionsBuilder()
+        org.openjdk.jmh.Main.main(args);
+        /*Options opt = new OptionsBuilder()
                 //.include(TfLinearTransformBenchmark.class.getSimpleName())
                 .include(HnswBenchmarck.class.getSimpleName())
-                .include(Annoy4sBenchmark.class.getSimpleName())
-                .include(AnnoyBenchmark.class.getSimpleName())
+                //.include(Annoy4sBenchmark.class.getSimpleName())
+                //.include(AnnoyBenchmark.class.getSimpleName())
                 .forks(1)
                 .build();
 
-        new Runner(opt).run();
+        new Runner(opt).run();*/
     }
 }
