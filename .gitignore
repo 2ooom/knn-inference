@@ -52,3 +52,5 @@ gradlew
 #tests
 retrieval/test/dir
 .gradle/
+
+tf-logs/
