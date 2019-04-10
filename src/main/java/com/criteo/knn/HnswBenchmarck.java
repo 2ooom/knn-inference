@@ -19,7 +19,7 @@ public class HnswBenchmarck extends BenchmarkBase {
         index = HnswIndex.create(metric, dimension);
         index.initNewIndex(nbItems, M, efConstruction);
         for (int i = 0; i < nbItems; i++) {
-            float[] vector = getVector(dimension, getValueById.apply(i));
+            float[] vector = getRandomVector(dimension);
             index.addItem(vector, i);
         }
         query = index.getItem(queryId);
@@ -36,7 +36,18 @@ public class HnswBenchmarck extends BenchmarkBase {
     @Fork(value = 1, warmups = 1)
     @BenchmarkMode(Mode.AverageTime)
     @OutputTimeUnit(TimeUnit.MICROSECONDS)
-    public void hnsw() {
+    public void hnswLookupOnly() {
+        KnnResult[] results = index.knnQuery(query, k);
+    }
+
+    @Benchmark
+    @Fork(value = 1, warmups = 1)
+    @BenchmarkMode(Mode.AverageTime)
+    @OutputTimeUnit(TimeUnit.MICROSECONDS)
+    public void hnswLookupAfterRetrieve() {
+        long id = Math.abs(r.nextLong() % nbItems);
+        float[] query = index.getItem(id);
+
         KnnResult[] results = index.knnQuery(query, k);
     }
 }
