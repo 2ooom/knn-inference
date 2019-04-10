@@ -8,7 +8,6 @@ import java.util.concurrent.TimeUnit;
 @State(Scope.Benchmark)
 @Fork(warmups = 1, value = 1)
 public class HnswBenchmarck extends BenchmarkBase {
-    public float[] query;
 
     public int M = 16;
     public int efConstruction = 200;
@@ -22,7 +21,6 @@ public class HnswBenchmarck extends BenchmarkBase {
             float[] vector = getRandomVector(dimension);
             index.addItem(vector, i);
         }
-        query = index.getItem(queryId);
         System.out.println("Created index for " + index.getNbItems() + " items");
     }
 
@@ -36,7 +34,8 @@ public class HnswBenchmarck extends BenchmarkBase {
     @Fork(value = 1, warmups = 1)
     @BenchmarkMode(Mode.AverageTime)
     @OutputTimeUnit(TimeUnit.MICROSECONDS)
-    public void hnswLookupOnly() {
+    public void getNnsByRandomVector() {
+        float[] query = getRandomVector(dimension);
         KnnResult[] results = index.knnQuery(query, k);
     }
 
@@ -44,10 +43,19 @@ public class HnswBenchmarck extends BenchmarkBase {
     @Fork(value = 1, warmups = 1)
     @BenchmarkMode(Mode.AverageTime)
     @OutputTimeUnit(TimeUnit.MICROSECONDS)
-    public void hnswLookupAfterRetrieve() {
+    public void getNnsByRandomItem() {
         long id = Math.abs(r.nextLong() % nbItems);
         float[] query = index.getItem(id);
 
         KnnResult[] results = index.knnQuery(query, k);
+    }
+
+    @Benchmark
+    @Fork(value = 1, warmups = 1)
+    @BenchmarkMode(Mode.AverageTime)
+    @OutputTimeUnit(TimeUnit.MICROSECONDS)
+    public void getItem() {
+        long id = Math.abs(r.nextLong() % nbItems);
+        float[] item = index.getItem(id);
     }
 }

@@ -12,8 +12,6 @@ import java.util.concurrent.TimeUnit;
 public class Annoy4sBenchmark extends BenchmarkBase {
     public int numTrees = 32;
     public Pointer index;
-
-    public float[] query;
     AnnoyLibrary annoyLib;
 
     @Setup(Level.Trial)
@@ -21,12 +19,12 @@ public class Annoy4sBenchmark extends BenchmarkBase {
         annoyLib = Annoy.annoyLib();
         index = annoyLib.createEuclidean(dimension);
         for (int i = 0; i < nbItems; i++) {
-            float[] vector = getVector(dimension, getValueById.apply(i));
+            float[] vector = getRandomVector(dimension);
             annoyLib.addItem(index, i, vector);
         }
 
         annoyLib.build(index, numTrees);
-        query = getVector(dimension, getValueById.apply(queryId));
+
         System.out.println("Created Annoy4s index for " + annoyLib.getNItems(index) + " items");
     }
 
@@ -41,9 +39,41 @@ public class Annoy4sBenchmark extends BenchmarkBase {
     @Fork(value = 1, warmups = 1)
     @BenchmarkMode(Mode.AverageTime)
     @OutputTimeUnit(TimeUnit.MICROSECONDS)
-    public void hnsw() {
+    public void knnByRandomVector() {
+        float[] query = getRandomVector(dimension);
         int[] results = new int[k];
         float[] distances = new float[k];
         annoyLib.getNnsByVector(index, query, k, -1, results, distances);
+    }
+
+    @Benchmark
+    @Fork(value = 1, warmups = 1)
+    @BenchmarkMode(Mode.AverageTime)
+    @OutputTimeUnit(TimeUnit.MICROSECONDS)
+    public void getNnsByRandomItem() {
+        int id = Math.abs(r.nextInt() % nbItems);
+        float[] query = new float[dimension];
+        annoyLib.getItem(index, id, query);
+        int[] results = new int[k];
+        float[] distances = new float[k];
+        annoyLib.getNnsByVector(index, query, k, -1, results, distances);
+    }
+
+    @Benchmark
+    @Fork(value = 1, warmups = 1)
+    @BenchmarkMode(Mode.AverageTime)
+    @OutputTimeUnit(TimeUnit.MICROSECONDS)
+    public void getItem() {
+        int id = Math.abs(r.nextInt() % nbItems);
+        float[] vector = new float[dimension];
+        annoyLib.getItem(index, id, vector);
+    }
+
+    @Benchmark
+    @Fork(value = 1, warmups = 1)
+    @BenchmarkMode(Mode.AverageTime)
+    @OutputTimeUnit(TimeUnit.MICROSECONDS)
+    public void getRandomVector() {
+        float[] vector = getRandomVector(dimension);
     }
 }

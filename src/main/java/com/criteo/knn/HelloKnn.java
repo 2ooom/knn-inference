@@ -11,7 +11,10 @@ public class HelloKnn {
     public static void main(String[] args) throws IOException, RunnerException {
         //org.openjdk.jmh.Main.main(args);
         Options opt = new OptionsBuilder()
-                .include(TfLineraTransforBenchmark.class.getSimpleName())
+                //.include(TfLinearTransformBenchmark.class.getSimpleName())
+                .include(HnswBenchmarck.class.getSimpleName())
+                .include(Annoy4sBenchmark.class.getSimpleName())
+                .include(AnnoyBenchmark.class.getSimpleName())
                 .forks(1)
                 .build();
 

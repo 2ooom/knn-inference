@@ -21,12 +21,12 @@ public class AnnoyBenchmark extends BenchmarkBase {
         float[][] items = new float[nbItems][];
         long[] ids = new long[nbItems];
         for (int i = 0; i < nbItems; i++) {
-            float[] vector = getVector(dimension, getValueById.apply(i));
+            float[] vector = getRandomVector(dimension);
             items[i] = vector;
             ids[i] = i;
         }
         index.build(items, ids, numTrees);
-        query = getVector(dimension, getValueById.apply(queryId));
+
         System.out.println("Created Annoy index for " + index.getNItems() + " items");
     }
 
@@ -41,7 +41,8 @@ public class AnnoyBenchmark extends BenchmarkBase {
     @Fork(value = 1, warmups = 1)
     @BenchmarkMode(Mode.AverageTime)
     @OutputTimeUnit(TimeUnit.MICROSECONDS)
-    public void hnsw() {
+    public void knnByRandomVector() {
+        float[] query = getRandomVector(dimension);
         List<com.criteo.annoy.KnnResult> results = index.getClosestVectors(query, k, -1);
     }
 }
