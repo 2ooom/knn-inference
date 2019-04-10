@@ -1,9 +1,15 @@
-plugins {
-    id "java"
-    id "application"
-    id "com.github.johnrengelman.shadow" version "5.0.0"
-    id "me.champeau.gradle.jmh" version "0.4.8"
+apply plugin: 'java'
+apply plugin: 'application'
+buildscript {
+    repositories {
+        jcenter()
+    }
+    dependencies {
+        classpath 'com.github.jengelman.gradle.plugins:shadow:2.0.1'
+    }
 }
+
+apply plugin: 'com.github.johnrengelman.shadow'
 
 repositories {
     jcenter()
