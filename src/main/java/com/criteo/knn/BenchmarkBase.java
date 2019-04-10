@@ -2,6 +2,7 @@ package com.criteo.knn;
 
 import com.criteo.hnsw.Metrics;
 
+import java.util.Random;
 import java.util.function.Function;
 
 public abstract class BenchmarkBase {
@@ -13,11 +14,20 @@ public abstract class BenchmarkBase {
     public static int k = 20;
     public static String metric = Metrics.Euclidean;
     public static Function<Integer, Float> getValueById = (id) -> seedValue / (id + 1);
+    public static Random r = new Random();
 
     public static float[] getVector(int dimension, float value) {
         float[] vector = new float[dimension];
         for(int i = 0; i < dimension; i++) {
             vector[i] = value;
+        }
+        return vector;
+    }
+
+    public static float[] getRandomVector(int dimension) {
+        float[] vector = new float[dimension];
+        for(int i = 0; i < dimension; i++) {
+            vector[i] = r.nextFloat();
         }
         return vector;
     }

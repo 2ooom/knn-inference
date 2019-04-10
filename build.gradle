@@ -1,22 +1,16 @@
-apply plugin: 'java'
-apply plugin: 'application'
-
-buildscript {
-    repositories {
-        jcenter()
-    }
-    dependencies {
-        classpath 'com.github.jengelman.gradle.plugins:shadow:2.0.1'
-    }
+plugins {
+    id "java"
+    id "application"
+    id "com.github.johnrengelman.shadow" version "5.0.0"
+    id "me.champeau.gradle.jmh" version "0.4.8"
 }
- 
-apply plugin: 'com.github.johnrengelman.shadow'
-
-mainClassName = 'com.criteo.knn.HelloKnn'
 
 repositories {
-   jcenter()
+    jcenter()
 }
+
+//mainClassName = 'com.criteo.knn.HelloTensorFlow'
+mainClassName = 'com.criteo.knn.HelloKnn'
 
 ext {
     artifactId = "knn-inference"
@@ -24,10 +18,11 @@ ext {
 }
 
 dependencies {
+    compile group: 'net.pishen', name: 'annoy4s_2.11', version: '0.8.0'
     compile group: 'org.openjdk.jmh', name: 'jmh-core', version: '1.21'
     compile group: 'org.openjdk.jmh', name: 'jmh-generator-annprocess', version: '1.21'
-    compile group: 'net.pishen', name: 'annoy4s_2.11', version: '0.8.0'
-    //compile fileTree(dir: 'libs', include: '*.jar')
+    compile group: 'org.tensorflow', name: 'tensorflow', version: "1.13.1"
+    compile fileTree(dir: 'libs', include: '*.jar')
 }
 
 def AnnoyJniVersion = "v0.3"
