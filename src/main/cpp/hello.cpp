@@ -54,10 +54,27 @@ int main() {
     TF_Status *status = TF_NewStatus();
     TF_Graph *graph = read_graph(path_to_model, status);
 
+    // Configure input
+    std::vector<TF_Output> inputs;
+    TF_Operation* input_op = TF_GraphOperationByName(graph, input_node_name);
+    std::cout << "Input retrieved operation '" << TF_OperationName(input_op) << "' Type '" << TF_OperationOpType(input_op) << "'\n";
+    TF_Output input_opout = {input_op, 0};
+    inputs.push_back(input_opout);
+
+    // Configure output
+    std::vector<TF_Output> outputs;
+    TF_Operation* output_op = TF_GraphOperationByName(graph, output_node_name);
+    std::cout << "Retrieved operation '" << TF_OperationName(output_op) << "' Type '" << TF_OperationOpType(output_op) << "'\n";
+    TF_Output output_opout = {output_op, 0};
+    outputs.push_back(output_opout);
+
     //Index<float> *index = create_euclidean(embeddings_dimension, nb_items, M, efConstruction, random_seed);
     Index<float> *index = load_euclidean(embeddings_dimension);
-    float *values = get_model_input(embeddings_dimension, extra_dimension, nb_embeddings, index, nb_items);
-    // Use the graph
+
+    // Creating session
+    TF_SessionOptions* sess_opts = TF_NewSessionOptions();
+    TF_Session* session = TF_NewSession(graph, sess_opts, status);
+    assert(TF_GetCode(status) == TF_OK);
 
     // Create variables to store the size of the input and output variables
     const int num_bytes_in = dimension * nb_embeddings * sizeof(float);
@@ -66,70 +83,35 @@ int main() {
     int64_t in_dims[] = {nb_embeddings, dimension};
     int64_t out_dims[] = {dimension};
 
-    // ######################
-    // Prepare Input
-    // ######################
-
-    std::vector<TF_Output> inputs;
-    std::vector<TF_Tensor*> input_values;
-
-    TF_Operation* input_op = TF_GraphOperationByName(graph, input_node_name);
-    std::cout << "Retrieved operation '" << TF_OperationName(input_op) << "' Type '" << TF_OperationOpType(input_op) << "'\n";
-    TF_Output input_opout = {input_op, 0};
-    inputs.push_back(input_opout);
-
-    std::cout<< "Creating tensor values[0]="<< values[0] << "; num_bytes_in=" << num_bytes_in << " values [last]=" << values[(num_bytes_in/sizeof(float)) - 1] << " last_index = " << (num_bytes_in/sizeof(float)) - 1 << "\n";
-    TF_Tensor* input = TF_NewTensor(TF_FLOAT, in_dims, 2 /*in_dims.length*/, values, num_bytes_in, free_tensor, 0);
-    input_values.push_back(input);
-
-    std::cout << "Input op info: " << TF_OperationNumOutputs(input_op) << "\n";
-    std::cout << "Input data info: " << TF_Dim(input, 0) << "x"<< TF_Dim(input, 1) << "\n";
-
-    // ######################
-    // Prepare Output
-    // ######################
-
-    std::vector<TF_Output> outputs;
-    TF_Operation* output_op = TF_GraphOperationByName(graph, output_node_name);
-    std::cout << "Retrieved operation '" << TF_OperationName(output_op) << "' Type '" << TF_OperationOpType(output_op) << "'\n";
-    TF_Output output_opout = {output_op, 0};
-    outputs.push_back(output_opout);
-
-    std::vector<TF_Tensor*> output_values(outputs.size(), nullptr);
-
-    // Similar to creating the input tensor, however here we don't yet have the
-    // output values, so we use TF_AllocateTensor()
-    TF_Tensor* output_value = TF_AllocateTensor(TF_FLOAT, out_dims, 1 /*out_dims.length*/, num_bytes_out);
-    output_values.push_back(output_value);
-
-    // As with inputs, check the values for the output operation and output tensor
-    std::cout << "Output: " << TF_OperationName(output_op) << "\n";
-    std::cout << "Output info: " << TF_Dim(output_value, 0) << "\n";
-
-    // ######################
-    // Run graph
-    // ######################
-    fprintf(stdout, "Running session...\n");
-    TF_SessionOptions* sess_opts = TF_NewSessionOptions();
-    TF_Session* session = TF_NewSession(graph, sess_opts, status);
-    assert(TF_GetCode(status) == TF_OK);
-
     for (int i = 0; i < nb_iterations; i++) {
+        // Creating input
         auto start = std::chrono::high_resolution_clock::now();
+        float *values = get_model_input(embeddings_dimension, extra_dimension, nb_embeddings, index, nb_items);
+        TF_Tensor* input = TF_NewTensor(TF_FLOAT, in_dims, 2 /*in_dims.length*/, values, num_bytes_in, free_tensor, 0);
+        std::vector<TF_Tensor*> input_values;
+        input_values.push_back(input);
+        //std::cout << "Input data info: " << TF_Dim(input, 0) << "x"<< TF_Dim(input, 1) << "\n";
+
+        // Allocating output
+        TF_Tensor* output_value = TF_AllocateTensor(TF_FLOAT, out_dims, 1 /*out_dims.length*/, num_bytes_out);
+        std::vector<TF_Tensor*> output_values(outputs.size(), nullptr);
+        output_values.push_back(output_value);
+        //std::cout << "Output info: " << TF_Dim(output_value, 0) << "\n";
+
+        // Running graph
         TF_SessionRun(session, nullptr,
                         &inputs[0], &input_values[0], inputs.size(),
                         &outputs[0], &output_values[0], outputs.size(),
                         nullptr, 0, nullptr, status);
+        
+        float* out_vals = static_cast<float*>(TF_TensorData(output_values[0]));
+        /*for (int i = 0; i < dimension; ++i) {
+            std::cout << "Output values info: " << *out_vals++ << "\n";
+        }*/
         auto elapsed = std::chrono::high_resolution_clock::now() - start;
         float microseconds = (float)std::chrono::duration_cast<std::chrono::microseconds>(elapsed).count();
         fprintf(stdout, "%.2f\n", microseconds);
     }
-
-    // Assign the values from the output tensor to a variable and iterate over them
-    /*float* out_vals = static_cast<float*>(TF_TensorData(output_values[0]));
-    for (int i = 0; i < dimension; ++i) {
-        std::cout << "Output values info: " << *out_vals++ << "\n";
-    }*/
 
     fprintf(stdout, "Successfully run session\n");
 
