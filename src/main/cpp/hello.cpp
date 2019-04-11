@@ -12,15 +12,19 @@
 #include "hnswlib.h"
 
 TF_Buffer *read_file(const char *path);
-TF_Graph *read_graph(const char *path);
+TF_Graph *read_graph(const char *path, TF_Status *status);
 Index<float> *create_euclidean(int dimension, const size_t nbItems, const size_t M, const size_t efConstruction, const size_t random_seed);
 Index<float> *load_euclidean(int dimension);
-float** get_model_input(int dimension, int extra_dimension, int nb_embeddings, Index<float> * index, int nb_items);
+float* get_model_input(int dimension, int extra_dimension, int nb_embeddings, Index<float> * index, int nb_items);
 
 const float RAND_MAX_FLOAT = (float)(RAND_MAX);
 
 const std::string path_to_index = "index-10k-random.hnsw";
 const char* path_to_model = "/Users/d.parfenchik/Dev/knn-inference/model/model-const.pb";
+const char* input_node_name = "product_embeddings";
+const char* output_node_name = "user_embeddings";
+
+const int nb_iterations = 15000;
 
 float get_random_float() {
     return (float)rand()/RAND_MAX_FLOAT;
@@ -47,52 +51,55 @@ int main() {
     int efConstruction = 200;
     int random_seed = 42;
 
-    TF_Graph *graph = read_graph(path_to_model);
+    TF_Status *status = TF_NewStatus();
+    TF_Graph *graph = read_graph(path_to_model, status);
+
     //Index<float> *index = create_euclidean(embeddings_dimension, nb_items, M, efConstruction, random_seed);
     Index<float> *index = load_euclidean(embeddings_dimension);
-    float **values = get_model_input(embeddings_dimension, extra_dimension, nb_embeddings, index, nb_items);
+    float *values = get_model_input(embeddings_dimension, extra_dimension, nb_embeddings, index, nb_items);
     // Use the graph
 
     // Create variables to store the size of the input and output variables
-    const int num_bytes_in = dimension * nb_items * sizeof(float);
+    const int num_bytes_in = dimension * nb_embeddings * sizeof(float);
     const int num_bytes_out = dimension * sizeof(float);
 
     int64_t in_dims[] = {nb_embeddings, dimension};
     int64_t out_dims[] = {dimension};
 
+    // ######################
+    // Prepare Input
+    // ######################
+
     std::vector<TF_Output> inputs;
     std::vector<TF_Tensor*> input_values;
 
-    std::cout << "retrieving operations\n";
-
-    TF_Operation* input_op = TF_GraphOperationByName(graph, "product_embeddings");
-
-    std::cout << "retrieved" << input_op << "\n";
+    TF_Operation* input_op = TF_GraphOperationByName(graph, input_node_name);
+    std::cout << "Retrieved operation '" << TF_OperationName(input_op) << "' Type '" << TF_OperationOpType(input_op) << "'\n";
     TF_Output input_opout = {input_op, 0};
     inputs.push_back(input_opout);
 
+    std::cout<< "Creating tensor values[0]="<< values[0] << "; num_bytes_in=" << num_bytes_in << " values [last]=" << values[(num_bytes_in/sizeof(float)) - 1] << " last_index = " << (num_bytes_in/sizeof(float)) - 1 << "\n";
     TF_Tensor* input = TF_NewTensor(TF_FLOAT, in_dims, 2 /*in_dims.length*/, values, num_bytes_in, free_tensor, 0);
     input_values.push_back(input);
 
     std::cout << "Input op info: " << TF_OperationNumOutputs(input_op) << "\n";
-    std::cout << "Input data info: " << TF_Dim(input, 0) << "\n";
-/*
+    std::cout << "Input data info: " << TF_Dim(input, 0) << "x"<< TF_Dim(input, 1) << "\n";
+
     // ######################
-    // Set up graph outputs (similar to setting up graph inputs)
+    // Prepare Output
     // ######################
 
-    // Create vector to store graph output operations
     std::vector<TF_Output> outputs;
-    TF_Operation* output_op = TF_GraphOperationByName(graph, "output_node0");
+    TF_Operation* output_op = TF_GraphOperationByName(graph, output_node_name);
+    std::cout << "Retrieved operation '" << TF_OperationName(output_op) << "' Type '" << TF_OperationOpType(output_op) << "'\n";
     TF_Output output_opout = {output_op, 0};
     outputs.push_back(output_opout);
 
-    // Create TF_Tensor* vector
     std::vector<TF_Tensor*> output_values(outputs.size(), nullptr);
 
     // Similar to creating the input tensor, however here we don't yet have the
     // output values, so we use TF_AllocateTensor()
-    TF_Tensor* output_value = TF_AllocateTensor(TF_FLOAT, out_dims, 2, num_bytes_out);
+    TF_Tensor* output_value = TF_AllocateTensor(TF_FLOAT, out_dims, 1 /*out_dims.length*/, num_bytes_out);
     output_values.push_back(output_value);
 
     // As with inputs, check the values for the output operation and output tensor
@@ -107,18 +114,22 @@ int main() {
     TF_Session* session = TF_NewSession(graph, sess_opts, status);
     assert(TF_GetCode(status) == TF_OK);
 
-    // Call TF_SessionRun
-    TF_SessionRun(session, nullptr,
-                    &inputs[0], &input_values[0], inputs.size(),
-                    &outputs[0], &output_values[0], outputs.size(),
-                    nullptr, 0, nullptr, status);
+    for (int i = 0; i < nb_iterations; i++) {
+        auto start = std::chrono::high_resolution_clock::now();
+        TF_SessionRun(session, nullptr,
+                        &inputs[0], &input_values[0], inputs.size(),
+                        &outputs[0], &output_values[0], outputs.size(),
+                        nullptr, 0, nullptr, status);
+        auto elapsed = std::chrono::high_resolution_clock::now() - start;
+        float microseconds = (float)std::chrono::duration_cast<std::chrono::microseconds>(elapsed).count();
+        fprintf(stdout, "%.2f\n", microseconds);
+    }
 
     // Assign the values from the output tensor to a variable and iterate over them
-    float* out_vals = static_cast<float*>(TF_TensorData(output_values[0]));
-    for (int i = 0; i < 9; ++i)
-    {
+    /*float* out_vals = static_cast<float*>(TF_TensorData(output_values[0]));
+    for (int i = 0; i < dimension; ++i) {
         std::cout << "Output values info: " << *out_vals++ << "\n";
-    }
+    }*/
 
     fprintf(stdout, "Successfully run session\n");
 
@@ -126,24 +137,21 @@ int main() {
     TF_CloseSession(session, status);
     TF_DeleteSession(session, status);
     TF_DeleteSessionOptions(sess_opts);
-*/
+    TF_DeleteStatus(status);
     TF_DeleteGraph(graph);
     return 0;
 }
 
-TF_Graph *read_graph(const char *path) {
+TF_Graph *read_graph(const char *path, TF_Status *status) {
     TF_Buffer *graph_def = read_file(path);
     TF_Graph *graph = TF_NewGraph();
-    TF_Status *status = TF_NewStatus();
     TF_ImportGraphDefOptions *opts = TF_NewImportGraphDefOptions();
     TF_GraphImportGraphDef(graph, graph_def, opts, status);
     TF_DeleteImportGraphDefOptions(opts);
     assert(TF_GetCode(status) == TF_OK);
-    fprintf(stdout, "Really Successfully imported graph\n");
-    TF_DeleteStatus(status);
+    std::cout << "Really Successfully imported graph\n";
     TF_DeleteBuffer(graph_def);
-
-    return 0;
+    return graph;
 }
 
 TF_Buffer *read_file(const char *path) {
@@ -198,20 +206,23 @@ Index<float> *load_euclidean(int dimension) {
     return index;
 }
 
-float** get_model_input(int dimension, int extra_dimension, int nb_embeddings, Index<float> * index, int nb_items) {
-    float** result = new float*[nb_embeddings];
-    for(int i = 0; i < nb_embeddings; i++) {
-        result[i] = new float[dimension + extra_dimension];
-        float* input = result[i];
+float* get_model_input(int dimension, int extra_dimension, int rows, Index<float> * index, int nb_items) {
+    int cols = dimension + extra_dimension;
+    int len = rows * cols;
+    // We need to allocate contiguous memory block to pass into TF_Tensor
+    float* result = new float[len];
+    for(int i = 0; i < rows; i++) {
         int id = get_random_id(nb_items);
+        int row_shift = i*cols;
         std::vector<float> embedding = index->appr_alg->template getDataByLabel<float>(id);
-        //std::cout << "Picked [" << id << "] = " << embedding[0] <<"\n";
         for(int j = 0; j < dimension; j++) {
-            input[j] = embedding[j];
+            result[row_shift + j] = embedding[j];
         }
-        for(int j = dimension; j < dimension + extra_dimension; j++) {
-            input[j] = embedding[j];
+        for(int j = dimension; j < cols; j++) {
+            result[row_shift + j] = j * i;
         }
+        //std::cout << "Input "<< i << " [" << id << "] First = " << result[row_shift] << "; Last = " << result[row_shift + cols - 1] << " index = " << row_shift + cols - 1 <<"\n";
     }
+    //std::cout << "Input first="<< result[0] << " Last=" << result[len - 1] << "\n";
     return result;
 }
