@@ -110,6 +110,15 @@ public class TfLinearTransformBenchmark  {
         return outputBuffer;
     }
 
+
+    @Benchmark
+    @Fork(value = 1, warmups = 1)
+    @BenchmarkMode(Mode.AverageTime)
+    @OutputTimeUnit(TimeUnit.MICROSECONDS)
+    public Tensor createTensor() {
+        return Tensor.create(productEmbeddings, Float.class);
+    }
+
     @Benchmark
     @Fork(value = 1, warmups = 1)
     @BenchmarkMode(Mode.AverageTime)
