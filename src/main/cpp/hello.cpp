@@ -24,11 +24,20 @@ float get_elepased_seconds(std::chrono::time_point<std::chrono::high_resolution_
 const float RAND_MAX_FLOAT = (float)(RAND_MAX);
 
 const std::string path_to_index = "index-10k-random.hnsw";
-const char* path_to_model = "/Users/d.parfenchik/Dev/knn-inference/model/model-const.pb";
+const char* path_to_model = "model/model-nn.pb";
 const char* input_node_name = "product_embeddings";
 const char* output_node_name = "user_embeddings";
 
 const int nb_iterations = 15000;
+const int nb_items = 10000;
+const int nb_embeddings = 50;
+const int embeddings_dimension = 100;
+const int extra_dimension = 5;
+const int dimension = embeddings_dimension + extra_dimension;
+const int M = 16;
+const int k = 20;
+const int efConstruction = 200;
+const int random_seed = 42;
 
 float get_random_float() {
     return (float)rand()/RAND_MAX_FLOAT;
@@ -46,16 +55,6 @@ void free_tensor(void* data, size_t len, void* arg) {
 }
 
 int main() {
-    int nb_items = 10000;
-    int nb_embeddings = 50;
-    int embeddings_dimension = 100;
-    int extra_dimension = 5;
-    int dimension = embeddings_dimension + extra_dimension;
-    int M = 16;
-    int k = 20;
-    int efConstruction = 200;
-    int random_seed = 42;
-
     TF_Status *status = TF_NewStatus();
     TF_Graph *graph = read_graph(path_to_model, status);
 
@@ -141,12 +140,13 @@ int main() {
         /*for(int i = 0; i < k; i++) {
             std::cout << items[i] << " -> " << distances[i] << "\n";
         }*/
-        float total_elapsed = get_model_input_microseconds + input_tensor_microseconds + output_tensor_microseconds + run_session_microseconds + knn_microseconds;
+        float total_elapsed = get_model_input_microseconds + input_tensor_microseconds + output_tensor_microseconds + run_session_microseconds + read_output_microseconds + knn_microseconds;
         std::cout <<
             get_model_input_microseconds << ", " <<
             input_tensor_microseconds << ", " <<
             output_tensor_microseconds << ", " <<
             run_session_microseconds << ", " <<
+            read_output_microseconds << ", " <<
             knn_microseconds << ", " <<
             total_elapsed << "\n";
     }
