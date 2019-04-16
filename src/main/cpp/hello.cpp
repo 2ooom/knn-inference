@@ -15,7 +15,7 @@ TF_Buffer *read_file(const char *path);
 TF_Graph *read_graph(const char *path, TF_Status *status);
 Index<float> *create_euclidean(int dimension, const size_t nbItems, const size_t M, const size_t efConstruction, const size_t random_seed);
 Index<float> *load_euclidean(int dimension);
-float* get_model_input(int dimension, int extra_dimension, Index<float> * index, int ids[], float* result);
+float* get_model_input(int dimension, int extra_dimension, Index<float> * index, int * ids, float* result, int rows);
 void set_random_ids(int* ids, int len, int max_id);
 std::chrono::time_point<std::chrono::high_resolution_clock, std::chrono::high_resolution_clock::duration> now();
 float get_elepased_microseconds(std::chrono::time_point<std::chrono::high_resolution_clock, std::chrono::high_resolution_clock::duration> start);
@@ -96,7 +96,7 @@ int main() {
         auto start = now();
         std::vector<float> values(input_size);
         float* values_data = values.data();
-        get_model_input(embeddings_dimension, extra_dimension, index, ids.data(), values_data);
+        get_model_input(embeddings_dimension, extra_dimension, index, ids.data(), values_data, nb_embeddings);
         float get_model_input_microseconds = get_elepased_microseconds(start);
 
         start = now();
@@ -222,10 +222,8 @@ Index<float> *load_euclidean(int dimension) {
     return index;
 }
 
-float* get_model_input(int dimension, int extra_dimension, Index<float> * index, int ids[], float* result) {
+float* get_model_input(int dimension, int extra_dimension, Index<float> * index, int* ids, float* result, int rows) {
     int cols = dimension + extra_dimension;
-    int rows = sizeof(ids);
-    int len = rows * cols;
     // We need to allocate contiguous memory block to pass into TF_Tensor
     for(int i = 0; i < rows; i++) {
         int id = ids[i];//get_random_id(nb_items);
