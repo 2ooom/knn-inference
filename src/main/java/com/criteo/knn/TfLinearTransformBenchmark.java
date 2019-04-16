@@ -29,6 +29,7 @@ public class TfLinearTransformBenchmark  {
     public Random r = new Random();
     public float[][] productEmbeddings;
     public HnswIndex index;
+    public float[] query;
 
     @Setup(Level.Trial)
     public void setUp() {
@@ -37,7 +38,7 @@ public class TfLinearTransformBenchmark  {
         index = b.index;
 
         setUpSession();
-
+        query = index.getItem(BenchmarkBase.getRandomId());
         productEmbeddings = new float[nbProducts][];
         for(int i = 0; i < productEmbeddings.length; i++) {
             productEmbeddings[i] = BenchmarkBase.getRandomVector(result_dimension);
@@ -91,6 +92,14 @@ public class TfLinearTransformBenchmark  {
     @OutputTimeUnit(TimeUnit.MICROSECONDS)
     public KnnResult[] predictAndKnnFromRandomItems() {
         float[] query = indexLookupAndPredict();
+        return index.knnQuery(query, BenchmarkBase.k);
+    }
+
+    @Benchmark
+    @Fork(value = 1, warmups = 1)
+    @BenchmarkMode(Mode.AverageTime)
+    @OutputTimeUnit(TimeUnit.MICROSECONDS)
+    public KnnResult[] knn() {
         return index.knnQuery(query, BenchmarkBase.k);
     }
 
