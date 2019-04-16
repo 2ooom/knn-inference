@@ -131,7 +131,7 @@ int main() {
             std::cout << "Output values info: " << *out_vals++ << "\n";
         }*/
         float read_output_microseconds = get_elepased_microseconds(start);
-        
+
         start = now();
         std::vector<float> distances(k);
         std::vector<size_t> items(k);
@@ -239,6 +239,16 @@ float* get_model_input(int dimension, int extra_dimension, Index<float> * index,
     }
     //std::cout << "Input first="<< result[0] << " Last=" << result[rows*cols - 1] << "\n";
     return result;
+}
+
+void compute_average(int rows, int cols, float* input, float* result) {
+    for(int i = 0; i < rows; i++) {
+        double sum = 0;
+        for(int j = 0; j < cols; j++) {
+            sum += input[i*cols + j];
+        }
+        result[i] = (float)(sum / cols);
+    }
 }
 
 void set_random_ids(int* ids, int len, int max_id) {
