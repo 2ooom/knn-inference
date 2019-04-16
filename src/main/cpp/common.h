@@ -1,8 +1,6 @@
-#include <assert.h>
-#include <memory.h>
-#include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
+#include <iostream>
+#include <fstream>
 #include <chrono>
 
 const int nb_iterations = 15000;
@@ -38,4 +36,12 @@ float get_elepased_microseconds(std::chrono::time_point<std::chrono::high_resolu
 
 float get_elepased_seconds(std::chrono::time_point<std::chrono::high_resolution_clock, std::chrono::high_resolution_clock::duration> start) {
     return get_elepased_microseconds(start)/1000000.0f;
+}
+
+void read_ids_from_file(int* ids, int len, std::fstream& fp) {
+    for(int i = 0; i < len; i++) {
+        fp >> ids[i];
+        //std::cout << ids[i] << " ";
+    }
+    //std::cout << "\n";
 }

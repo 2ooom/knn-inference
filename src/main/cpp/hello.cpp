@@ -15,9 +15,7 @@
 #include "tf.h"
 #include "knn.h"
 
-void read_ids_from_file(int* ids, int len, std::fstream &fp);
-
-const char* path_to_model = "model/model-nn.pb";
+const char* path_to_model = "model/model-const.pb";
 const char* input_node_name = "product_embeddings";
 const char* output_node_name = "user_embeddings";
 
@@ -162,12 +160,4 @@ void compute_average(int rows, int cols, float* input, float* result) {
         }
         result[i] = (float)(sum / cols);
     }
-}
-
-void read_ids_from_file(int* ids, int len, std::fstream& fp) {
-    for(int i = 0; i < len; i++) {
-        fp >> ids[i];
-        //std::cout << ids[i] << " ";
-    }
-    //std::cout << "\n";
 }

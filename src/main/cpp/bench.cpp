@@ -73,14 +73,6 @@ class TfInference : public benchmark::Fixture {
         TF_DeleteGraph(graph);
         delete index;
     }
-
-    void read_ids_from_file(int* ids, int len, std::fstream& fp) {
-        for(int i = 0; i < len; i++) {
-            fp >> ids[i];
-            //std::cout << ids[i] << " ";
-        }
-        //std::cout << "\n";
-    }
 };
 
 BENCHMARK_DEFINE_F(TfInference, FullTest)(benchmark::State& st) {
