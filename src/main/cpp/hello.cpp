@@ -225,19 +225,19 @@ Index<float> *load_euclidean(int dimension) {
 float* get_model_input(int dimension, int extra_dimension, Index<float> * index, int* ids, float* result, int rows) {
     int cols = dimension + extra_dimension;
     // We need to allocate contiguous memory block to pass into TF_Tensor
+    float* row_ptr = result;
+    int* id_ptr = ids;
     for(int i = 0; i < rows; i++) {
-        int id = ids[i];//get_random_id(nb_items);
-        int row_shift = i*cols;
-        std::vector<float> embedding = index->appr_alg->template getDataByLabel<float>(id);
-        for(int j = 0; j < dimension; j++) {
-            result[row_shift + j] = embedding[j];
-        }
+        index->getDataPointerByLabel(*id_ptr, row_ptr);
+        row_ptr += dimension;
         for(int j = dimension; j < cols; j++) {
-            result[row_shift + j] = result[row_shift + j - dimension];
+            *row_ptr = *(row_ptr - dimension);
+            row_ptr++;
         }
-        //std::cout << "Input "<< i << " [" << id << "] First = " << result[row_shift] << "; Last = " << result[row_shift + cols - 1] << " index = " << row_shift + cols - 1 <<"\n";
+        //std::cout << "Input "<< i << " [" << *id_ptr << "] First = " << *(row_ptr-cols) << "; Last = " << *(row_ptr - 1) << " index = " << row_ptr - result<<"\n";
+        id_ptr++;
     }
-    //std::cout << "Input first="<< result[0] << " Last=" << result[len - 1] << "\n";
+    //std::cout << "Input first="<< result[0] << " Last=" << result[rows*cols - 1] << "\n";
     return result;
 }
 
