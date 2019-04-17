@@ -151,13 +151,3 @@ int main(int argc, char* argv[]) {
     delete index;
     return 0;
 }
-
-void compute_average(int rows, int cols, float* input, float* result) {
-    for(int i = 0; i < rows; i++) {
-        double sum = 0;
-        for(int j = 0; j < cols; j++) {
-            sum += input[i*cols + j];
-        }
-        result[i] = (float)(sum / cols);
-    }
-}

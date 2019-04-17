@@ -5,8 +5,10 @@
 #include "knn.h"
 #include "tf.h"
 
-class TfInference : public benchmark::Fixture {
-    public: const char* path_to_model = "model/model-nn.pb";
+#define nb_repetitions 10
+
+class TfAttentionModel : public benchmark::Fixture {
+    public: const char* path_to_model = "model/model-const.pb";
     public: const char* input_node_name = "product_embeddings";
     public: const char* output_node_name = "user_embeddings";
 
@@ -33,11 +35,12 @@ class TfInference : public benchmark::Fixture {
     public: const int64_t in_dims[2] = {nb_embeddings, dimension};
     public: const int64_t out_dims[1] = {dimension};
 
-    public: std::fstream scenario_input;
+    public: std::vector<int> scenario_input;
+    public: std::vector<int>::iterator scenario_input_it;
 
     public:
     void SetUp(const ::benchmark::State& state) {
-        std::cout<<"\nInitializing up\n";
+        //std::cout<<"\nInitializing up\n";
         status = TF_NewStatus();
         graph = read_graph(path_to_model, status);
 
@@ -60,12 +63,20 @@ class TfInference : public benchmark::Fixture {
         TF_Output output_opout = {output_op, 0};
         outputs.push_back(output_opout);
 
-        scenario_input = std::fstream(path_to_scenario, std::ios::in);
+        std::fstream scenario_input_file = std::fstream(path_to_scenario, std::ios::in);
+        //std::vector<int> scenario_input(nb_embeddings * nb_iterations);
+        scenario_input.clear();
+        int id;
+        while (scenario_input_file >> id) {
+            scenario_input.push_back(id);
+        }
+        //std::cout<<"Read " << scenario_input.size() << "\n";
+        scenario_input_it = scenario_input.begin();
+        scenario_input_file.close();
     }
 
     void TearDown(const ::benchmark::State& state) {
-        std::cout<<"\nCleaning up\n";
-        scenario_input.close();
+        //std::cout<<"\nCleaning up\n";
         TF_CloseSession(session, status);
         TF_DeleteSession(session, status);
         TF_DeleteSessionOptions(sess_opts);
@@ -73,13 +84,23 @@ class TfInference : public benchmark::Fixture {
         TF_DeleteGraph(graph);
         delete index;
     }
+
+    public:
+    void read_ids_from_it(int* ids, int len) {
+        for(int i = 0; i < len; i++) {
+            ids[i] = *scenario_input_it;
+            scenario_input_it++;
+            //std::cout << ids[i] << " ";
+        }
+        //std::cout << "\n";
+    }
 };
 
-BENCHMARK_DEFINE_F(TfInference, FullTest)(benchmark::State& st) {
+BENCHMARK_DEFINE_F(TfAttentionModel, FullTest)(benchmark::State& st) {
     for (auto _ : st) {
         //std::cout<<".";
         std::vector<int> ids(nb_embeddings);
-        read_ids_from_file(ids.data(), nb_embeddings, scenario_input);
+        read_ids_from_it(ids.data(), nb_embeddings);
 
         std::vector<float> values(input_size);
         float* values_data = values.data();
@@ -116,9 +137,52 @@ BENCHMARK_DEFINE_F(TfInference, FullTest)(benchmark::State& st) {
     }
 }
 
-BENCHMARK_REGISTER_F(TfInference, FullTest)->
+BENCHMARK_DEFINE_F(TfAttentionModel, IndexLookup)(benchmark::State& st) {
+    for (auto _ : st) {
+        std::vector<int> ids(nb_embeddings);
+        read_ids_from_it(ids.data(), nb_embeddings);
+
+        std::vector<float> values(dimension * nb_embeddings);
+        float* values_data = values.data();
+        get_model_input(embeddings_dimension, extra_dimension, index, ids.data(), values_data, nb_embeddings);
+    }
+}
+
+
+BENCHMARK_DEFINE_F(TfAttentionModel, AvgInput)(benchmark::State& st) {
+    for (auto _ : st) {
+        std::vector<int> ids(nb_embeddings);
+        read_ids_from_it(ids.data(), nb_embeddings);
+
+        std::vector<float> values(dimension * nb_embeddings);
+        float* values_data = values.data();
+        get_model_input(embeddings_dimension, extra_dimension, index, ids.data(), values_data, nb_embeddings);
+        std::vector<float> avg_user_embedding(dimension);
+        float * query = avg_user_embedding.data();
+        compute_average(nb_embeddings, dimension, values_data, query);
+        std::vector<float> distances(k);
+        std::vector<size_t> items(k);
+        index->knnQuery(query, items.data(), distances.data(), k);
+    }
+}
+
+BENCHMARK_REGISTER_F(TfAttentionModel, FullTest)->
     Threads(1)->
-    Repetitions(10)->
+    Repetitions(nb_repetitions)->
+    Unit(benchmark::kMicrosecond)->
+    DisplayAggregatesOnly(true)->
+    Iterations(nb_iterations);
+
+BENCHMARK_REGISTER_F(TfAttentionModel, IndexLookup)->
+    Threads(1)->
+    Repetitions(nb_repetitions)->
+    Unit(benchmark::kMicrosecond)->
+    DisplayAggregatesOnly(true)->
+    Iterations(nb_iterations);
+
+BENCHMARK_REGISTER_F(TfAttentionModel, AvgInput)->
+    Threads(1)->
+    Repetitions(nb_repetitions)->
     Unit(benchmark::kMicrosecond)->
     DisplayAggregatesOnly(true)->
     Iterations(nb_iterations);

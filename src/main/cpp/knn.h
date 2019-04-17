@@ -6,7 +6,7 @@ Index<float> *load_euclidean(int dimension, const std::string &path) {
     bool normalize = false;
     Index<float> *index = new Index<float>(space, dimension, normalize);
     index->loadIndex(path);
-    fprintf(stdout, "Loaded index of %zu items\n", index->appr_alg->cur_element_count);
+    //fprintf(stdout, "Loaded index of %zu items\n", index->appr_alg->cur_element_count);
     return index;
 }
 
@@ -26,4 +26,18 @@ float* get_model_input(int dim, int extra_dimension, Index<float> * index, int* 
     }
     //std::cout << "Input first="<< result[0] << " Last=" << result[rows*cols - 1] << "\n";
     return result;
+}
+
+void compute_average(int rows, int cols, float* input, float* result) {
+    float *cell_ptr = input;
+    float *result_ptr = result;
+    for(int i = 0; i < rows; i++) {
+        double sum = 0;
+        for(int j = 0; j < cols; j++) {
+            sum += *cell_ptr;
+            cell_ptr ++;
+        }
+        *result_ptr = (float)(sum / cols);
+        result_ptr++;
+    }
 }
