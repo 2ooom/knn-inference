@@ -27,6 +27,9 @@ public:
         else if (distance == InnerProduct) {
             space = new hnswlib::InnerProductSpace(dim);
         }
+        else {
+            throw std::runtime_error("Distance not supported: " + std::to_string(distance));
+        }
         appr_alg = NULL;
     }
 
