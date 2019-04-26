@@ -11,7 +11,7 @@ class TfAttentionModel : public benchmark::Fixture {
     public: const char* path_to_model = "model/model-const.pb";
     public: const char* input_node_name = "product_embeddings";
     public: const char* output_node_name = "user_embeddings";
-
+    public: const int efSearch = 50;
     public: const int extra_dimension = 5;
     public: const int dimension = embeddings_dimension + extra_dimension;
 
@@ -44,7 +44,7 @@ class TfAttentionModel : public benchmark::Fixture {
         status = TF_NewStatus();
         graph = read_graph(path_to_model, status);
 
-        index = load_euclidean(embeddings_dimension, path_to_index);
+        index = load_euclidean(embeddings_dimension, path_to_index, efSearch);
 
         // Creating session
         sess_opts = TF_NewSessionOptions();
@@ -165,7 +165,7 @@ BENCHMARK_DEFINE_F(TfAttentionModel, AvgInput)(benchmark::State& st) {
         index->knnQuery(query, items.data(), distances.data(), k);
     }
 }
-
+/*
 BENCHMARK_REGISTER_F(TfAttentionModel, FullTest)->
     Threads(1)->
     Repetitions(nb_repetitions)->
@@ -179,7 +179,7 @@ BENCHMARK_REGISTER_F(TfAttentionModel, IndexLookup)->
     Unit(benchmark::kMicrosecond)->
     DisplayAggregatesOnly(true)->
     Iterations(nb_iterations);
-
+*/
 BENCHMARK_REGISTER_F(TfAttentionModel, AvgInput)->
     Threads(1)->
     Repetitions(nb_repetitions)->

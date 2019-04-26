@@ -1,12 +1,13 @@
 #include "hnswindex.h"
 #include "hnswlib.h"
 
-Index<float> *load_euclidean(int dimension, const std::string &path) {
+Index<float> *load_euclidean(int dimension, const std::string &path, int efSearch) {
     hnswlib::SpaceInterface<float> *space = new hnswlib::L2Space(dimension);
     bool normalize = false;
     Index<float> *index = new Index<float>(space, dimension, normalize);
     index->loadIndex(path);
-    //fprintf(stdout, "Loaded index of %zu items\n", index->appr_alg->cur_element_count);
+    index->appr_alg->setEf(efSearch);
+    //fprintf(stdout, "Loaded index of %zu items with efConstruction=%zu ef=%zu\n", index->appr_alg->cur_element_count, index->appr_alg->ef_construction_, index->appr_alg->ef_);
     return index;
 }
 
