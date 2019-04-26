@@ -40,8 +40,9 @@ public:
         float * query_data = query.data();
         if(model == Average) {
             compute_average(nb_items, query_vectors.data(), query_data);
-        } else {
-            throw std::runtime_error("Model not supported");
+        }
+        else {
+            throw std::runtime_error("Model not supported" + std::to_string(model));
         }
         Index<float> * index = indices_by_id[query_index];
 
