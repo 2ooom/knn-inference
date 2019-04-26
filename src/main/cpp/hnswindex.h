@@ -1,11 +1,32 @@
 #include <iostream>
+#include <tuple>
 #include "hnswlib.h"
+
+enum Distance {
+    Euclidian = 1,
+    Angular = 2,
+    InnerProduct = 3
+};
 
 template<typename dist_t, typename data_t=float>
 class Index {
 public:
     Index(hnswlib::SpaceInterface<float> *space, const int dim, bool normalize = false) :
-            space(space), dim(dim), normalize(normalize) {
+        space(space), dim(dim), normalize(normalize) {
+        appr_alg = NULL;
+    }
+
+    Index(Distance distance, const int dim) : dim(dim) {
+        if(distance == Euclidian) {
+            space = new hnswlib::L2Space(dim);
+        }
+        else if (distance == Angular) {
+            space = new hnswlib::InnerProductSpace(dim);
+            normalize = true;
+        }
+        else if (distance == InnerProduct) {
+            space = new hnswlib::InnerProductSpace(dim);
+        }
         appr_alg = NULL;
     }
 
