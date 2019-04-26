@@ -2,10 +2,36 @@
 #include <benchmark/benchmark.h>
 #include <vector>
 #include "common.h"
-#include "knn.h"
 #include "tf.h"
+#include "knnservice.cpp"
 
 #define nb_repetitions 10
+
+Index<float> *load_euclidean(int dimension, const std::string &path, int efSearch) {
+    Index<float> * index = new Index<float>(Euclidian, dimension);
+    index->loadIndex(path);
+    index->appr_alg->setEf(efSearch);
+    //fprintf(stdout, "Loaded index of %zu items with efConstruction=%zu ef=%zu\n", index->appr_alg->cur_element_count, index->appr_alg->ef_construction_, index->appr_alg->ef_);
+    return index;
+}
+
+float* get_model_input(int dim, int extra_dimension, Index<float> * index, int* ids, float* result, int rows) {
+    int cols = dim + extra_dimension;
+    float* row_ptr = result;
+    int* id_ptr = ids;
+    for(int i = 0; i < rows; i++) {
+        index->getDataPointerByLabel(*id_ptr, row_ptr);
+        row_ptr += dim;
+        for(int j = dim; j < cols; j++) {
+            *row_ptr = *(row_ptr - dim);
+            row_ptr++;
+        }
+        //std::cout << "Input "<< i << " [" << *id_ptr << "] First = " << *(row_ptr-cols) << "; Last = " << *(row_ptr - 1) << " index = " << row_ptr - result<<"\n";
+        id_ptr++;
+    }
+    //std::cout << "Input first="<< result[0] << " Last=" << result[rows*cols - 1] << "\n";
+    return result;
+}
 
 class TfAttentionModel : public benchmark::Fixture {
     public: const char* path_to_model = "model/model-const.pb";
@@ -149,23 +175,6 @@ BENCHMARK_DEFINE_F(TfAttentionModel, IndexLookup)(benchmark::State& st) {
 }
 
 
-BENCHMARK_DEFINE_F(TfAttentionModel, AvgInput)(benchmark::State& st) {
-    for (auto _ : st) {
-        std::vector<int> ids(nb_embeddings);
-        read_ids_from_it(ids.data(), nb_embeddings);
-
-        std::vector<float> values(dimension * nb_embeddings);
-        float* values_data = values.data();
-        get_model_input(embeddings_dimension, extra_dimension, index, ids.data(), values_data, nb_embeddings);
-        std::vector<float> avg_user_embedding(dimension);
-        float * query = avg_user_embedding.data();
-        compute_average(nb_embeddings, dimension, values_data, query);
-        std::vector<float> distances(k);
-        std::vector<size_t> items(k);
-        index->knnQuery(query, items.data(), distances.data(), k);
-    }
-}
-/*
 BENCHMARK_REGISTER_F(TfAttentionModel, FullTest)->
     Threads(1)->
     Repetitions(nb_repetitions)->
@@ -179,8 +188,68 @@ BENCHMARK_REGISTER_F(TfAttentionModel, IndexLookup)->
     Unit(benchmark::kMicrosecond)->
     DisplayAggregatesOnly(true)->
     Iterations(nb_iterations);
-*/
-BENCHMARK_REGISTER_F(TfAttentionModel, AvgInput)->
+
+
+class KnnServiceBenchmark : public benchmark::Fixture {
+public:
+    const int efSearch = 50;
+    const int k = 20;
+    const int index_id = 5;
+    KnnService* knn_service;
+    std::vector<int> index_ids;
+    std::vector<int> scenario_input;
+    std::vector<int>::iterator scenario_input_it;
+
+    void SetUp(const ::benchmark::State& state) {
+        //std::cout<<"\nKnnServiceBenchmark Initializing\n";
+        knn_service = new KnnService(Euclidian, embeddings_dimension, efSearch);
+        knn_service->loadIndex(index_id, path_to_index);
+
+        for(int i = 0; i < nb_embeddings; i++) {
+            index_ids.push_back(index_id);
+        }
+
+        std::fstream scenario_input_file = std::fstream(path_to_scenario, std::ios::in);
+        scenario_input.clear();
+        int id;
+        while (scenario_input_file >> id) {
+            scenario_input.push_back(id);
+        }
+        //std::cout<<"Read " << scenario_input.size() << "\n";
+        scenario_input_it = scenario_input.begin();
+        scenario_input_file.close();
+    }
+
+    void TearDown(const ::benchmark::State& state) {
+        //std::cout<<"\nCleaning up\n";
+        delete knn_service;
+    }
+
+    void read_ids_from_it(size_t* ids, int len) {
+        for(int i = 0; i < len; i++) {
+            ids[i] = *scenario_input_it;
+            scenario_input_it++;
+            //std::cout << ids[i] << " ";
+        }
+        //std::cout << "\n";
+    }
+
+};
+
+
+BENCHMARK_DEFINE_F(KnnServiceBenchmark, FullInference)(benchmark::State& st) {
+    for (auto _ : st) {
+        std::vector<size_t> ids(nb_embeddings);
+        read_ids_from_it(ids.data(), nb_embeddings);
+
+        std::vector<float> result_distances(k);
+        std::vector<size_t> result_items(k);
+        auto nb_items = knn_service->getClosestItems(index_ids.data(), ids.data(), nb_embeddings, index_id, result_items.data(), result_distances.data(), k, Average);
+        //std::cout<<"Retrieved " << nb_items << " vectors. Closest = " << result_items[0] << "; Distance = " << result_distances[0] << "\n";
+    }
+}
+
+BENCHMARK_REGISTER_F(KnnServiceBenchmark, FullInference)->
     Threads(1)->
     Repetitions(nb_repetitions)->
     Unit(benchmark::kMicrosecond)->
