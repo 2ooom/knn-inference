@@ -4,15 +4,30 @@ Realtime Service for building vectorized items representation with [TensorFlow](
 embedding space using [hnswlib](https://github.com/nmslib/hnswlib).
 
 ### KnnService comparison C++
+
+The scenario included reading 50 random embeddings from the index, aggregating them and performing kNN Query
+
+Parameters used for the index:
+ * efContruction = 50
+ * M = 16
+
+Parameters used for querying:
+ * efSearch = 50
+ 
 ```
--------------------------------------------------------------------------------------------------------------------------
-Benchmark                                                                               Time             CPU   Iterations
--------------------------------------------------------------------------------------------------------------------------
-KnnServiceBenchmark/FullInference/iterations:15000/repeats:10/threads:1_mean         65.9 us         64.8 us           10
-KnnServiceBenchmark/FullInference/iterations:15000/repeats:10/threads:1_median       66.1 us         64.9 us           10
-KnnServiceBenchmark/FullInference/iterations:15000/repeats:10/threads:1_stddev       3.25 us         2.56 us           10
+------------------------------------------------------------------------
+Benchmark                                         Time             CPU
+------------------------------------------------------------------------
+KnnServiceBenchmark/FullInference_mean         65.9 us         64.8 us
+KnnServiceBenchmark/FullInference_median       66.1 us         64.9 us
+KnnServiceBenchmark/FullInference_stddev       3.25 us         2.56 us
+
+* repetitions:15000
+* iterations:10
+* threads:1
+
 ```
-In order to launc it use `./bench-build-and-run.sh`
+In order to launch it use `./bench-build-and-run.sh`
 
 ### KnnService comparison Java
 
@@ -20,4 +35,4 @@ In order to launc it use `./bench-build-and-run.sh`
 Benchmark                               Mode  Cnt    Score    Error  Units
 KnnServiceBenchmark.getClosestItemsAvg  avgt    5  103.625 ± 46.253  us/op
 ```
-In order to launc it use `./gradlew run`
+In order to launch it use `./gradlew run`
