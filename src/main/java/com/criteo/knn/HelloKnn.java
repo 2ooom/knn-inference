@@ -15,6 +15,7 @@ public class HelloKnn {
                 .include(HnswBenchmarck.class.getSimpleName())
                 .include(Annoy4sBenchmark.class.getSimpleName())
                 .include(AnnoyBenchmark.class.getSimpleName())
+                .include(KnnServiceBenchmark.class.getSimpleName())
                 .forks(1)
                 .build();
 
