@@ -16,7 +16,7 @@ public class KnnServiceBenchmark extends BenchmarkBase {
     @Setup(Level.Trial)
     public void setUp() throws IOException {
         knn = new KnnService(distance, dimension, efSearch);
-        knn.loadIndex(indexId,"/Users/d.parfenchik/Dev/knn-inference/index-10k-random.hnsw");
+        knn.loadIndex(indexId,"./benchmark-data/index-10k.hnsw");
         System.out.println("Created knn service with efSearch = " + knn.efSearch+ "; dimension = " + knn.dimension + ";");
     }
 

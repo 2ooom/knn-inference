@@ -12,8 +12,8 @@ const int M = 16;
 const int efConstruction = 200;
 
 const char delimeter = ' ';
-const std::string path_to_scenario = "input-scenario-10k.csv";
-const std::string path_to_index = "index-10k-random.hnsw";
+const std::string path_to_scenario = "./benchmark-data/input-ids-15k.csv";
+const std::string path_to_index = "./benchmark-data/index-10k.hnsw";
 
 const float RAND_MAX_FLOAT = (float)(RAND_MAX);
 

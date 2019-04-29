@@ -6,19 +6,16 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.*;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public abstract class BenchmarkBase {
     public static int dimension = 100;
     public static int nbItems = 10000;
-    public static float seedValue = 0.5f;
-    public static String scenarioPath = "/Users/d.parfenchik/Dev/knn-inference/input-scenario-10k.csv";
+    public static String scenarioPath = "./benchmark-data/input-ids-15k.csv";
     public static int k = 20;
     public static String metric = Metrics.Euclidean;
     public static Distance distance = Enum.valueOf(Distance.class, metric);
 
-    public static Function<Integer, Float> getValueById = (id) -> seedValue / (id + 1);
     public static Random r = new Random();
 
     public static float[] getRandomVector(int dimension) {
