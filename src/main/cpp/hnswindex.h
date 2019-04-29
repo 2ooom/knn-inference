@@ -75,7 +75,7 @@ public:
         hnswlib::tableint label_c;
         auto search = appr_alg->label_lookup_.find(label);
         if (search == appr_alg->label_lookup_.end()) {
-            throw std::runtime_error("Label not found");
+            throw std::runtime_error("Label not found " + std::to_string(label) + "\n");
         }
         label_c = search->second;
         data_t* data_ptr = (data_t*)appr_alg->getDataByInternalId(label_c);
