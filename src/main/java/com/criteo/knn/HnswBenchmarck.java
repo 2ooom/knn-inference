@@ -3,25 +3,21 @@ package com.criteo.knn;
 import com.criteo.hnsw.KnnResult;
 import org.openjdk.jmh.annotations.*;
 import com.criteo.hnsw.HnswIndex;
+
+import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 
 @State(Scope.Benchmark)
 @Fork(warmups = 1, value = 1)
 public class HnswBenchmarck extends BenchmarkBase {
-
-    public int M = 16;
-    public int efConstruction = 200;
     public HnswIndex index;
 
     @Setup(Level.Trial)
     public void setUp() {
         index = HnswIndex.create(metric, dimension);
-        index.initNewIndex(nbItems, M, efConstruction);
-        for (int i = 0; i < nbItems; i++) {
-            float[] vector = getRandomVector(dimension);
-            index.addItem(vector, i);
-        }
-        System.out.println("Created index for " + index.getNbItems() + " items");
+        index.load("./benchmark-data/index-10k.hnsw");
+        index.setEf(efSearch);
+        System.out.println("Created knn service with efSearch = " + efSearch + "; dimension = " + dimension + "; nbItems = " + index.getNbItems());
     }
 
     @TearDown(Level.Trial)
@@ -30,7 +26,7 @@ public class HnswBenchmarck extends BenchmarkBase {
         System.out.println("Unloading index");
     }
 
-    @Benchmark
+    //@Benchmark
     @Fork(value = 1, warmups = 1)
     @BenchmarkMode(Mode.AverageTime)
     @OutputTimeUnit(TimeUnit.MICROSECONDS)
@@ -43,11 +39,11 @@ public class HnswBenchmarck extends BenchmarkBase {
     @Fork(value = 1, warmups = 1)
     @BenchmarkMode(Mode.AverageTime)
     @OutputTimeUnit(TimeUnit.MICROSECONDS)
-    public KnnResult[] aggregateItemsAndKnn() {
-        int nbProducts = 50;
+    public KnnResult[] getClosestItemsAvg() throws IOException {
+        long[] ids = getIdsIterator().next();
         float[] query = new float[dimension];
-        for(int i = 0; i < nbProducts; i++) {
-            float[] productEmbedding = index.getItem(getRandomId());
+        for(int i = 0; i < ids.length; i++) {
+            float[] productEmbedding = index.getItem(ids[i]);
             for(int j = 0; j < productEmbedding.length; j++ ){
                 query[j] += productEmbedding[j];
             }
@@ -58,7 +54,7 @@ public class HnswBenchmarck extends BenchmarkBase {
         return index.knnQuery(query, k);
     }
 
-    @Benchmark
+    //@Benchmark
     @Fork(value = 1, warmups = 1)
     @BenchmarkMode(Mode.AverageTime)
     @OutputTimeUnit(TimeUnit.MICROSECONDS)
@@ -68,7 +64,7 @@ public class HnswBenchmarck extends BenchmarkBase {
         return index.knnQuery(query, k);
     }
 
-    @Benchmark
+    //@Benchmark
     @Fork(value = 1, warmups = 1)
     @BenchmarkMode(Mode.AverageTime)
     @OutputTimeUnit(TimeUnit.MICROSECONDS)

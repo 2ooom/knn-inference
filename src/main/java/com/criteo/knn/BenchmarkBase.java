@@ -15,6 +15,8 @@ public abstract class BenchmarkBase {
     public static int k = 20;
     public static String metric = Metrics.Euclidean;
     public static Distance distance = Enum.valueOf(Distance.class, metric);
+    public int efSearch = 50;
+    public int indexId = 5;
 
     public static Random r = new Random();
 

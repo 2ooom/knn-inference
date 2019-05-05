@@ -10,8 +10,6 @@ import java.util.concurrent.TimeUnit;
 public class KnnServiceBenchmark extends BenchmarkBase {
 
     public KnnService knn;
-    public int efSearch = 50;
-    public int indexId = 5;
 
     @Setup(Level.Trial)
     public void setUp() throws IOException {
