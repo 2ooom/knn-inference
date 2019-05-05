@@ -15,7 +15,6 @@ repositories {
     jcenter()
 }
 
-//mainClassName = 'com.criteo.knn.HelloTensorFlow'
 mainClassName = 'com.criteo.knn.HelloKnn'
 
 ext {
@@ -23,16 +22,21 @@ ext {
     groupId = "com.criteo.knn"
 }
 
+configurations {
+    javacpp
+}
+
 dependencies {
     compile group: 'net.pishen', name: 'annoy4s_2.11', version: '0.8.0'
     compile group: 'org.openjdk.jmh', name: 'jmh-core', version: '1.21'
     compile group: 'org.openjdk.jmh', name: 'jmh-generator-annprocess', version: '1.21'
     compile group: 'org.tensorflow', name: 'tensorflow', version: "1.13.1"
+    javacpp group: 'org.bytedeco', name: 'javacpp', version: '1.4.4'
+    compile configurations.javacpp.dependencies
     compile fileTree(dir: 'libs', include: '*.jar')
 }
-
 def AnnoyJniVersion = "v0.3"
-def HnswJniVersion = "v0.2"
+def HnswJniVersion = "0.2"
 
 class Download extends DefaultTask {
     @Input
@@ -53,9 +57,52 @@ task downloadAnnoy(type: Download) {
 }
 
 task downloadHnsw(type: Download) {
-    sourceUrl = "https://github.com/2ooom/hnsw-jni/releases/download/${HnswJniVersion}/hnswlib-jni-all.jar"
+    sourceUrl = "https://github.com/2ooom/hnsw-jni/releases/download/v${HnswJniVersion}/hnsw-jni-${HnswJniVersion}-all.jar"
     target = new File("libs/hnsw-jni-all.jar")
 }
 
 compileJava.dependsOn downloadHnsw
 compileJava.dependsOn downloadAnnoy
+
+def KnnLibConfigClass= "KnnLibConfig"
+def KnnLibClass= "KnnLib"
+
+task compileConfig(type: JavaCompile) {
+    source = fileTree(dir: 'src', include: "**/${KnnLibConfigClass}.java")
+    destinationDir = file(sourceSets.main.java.outputDir)
+    classpath = files([configurations.javacpp.asPath])
+}
+
+task copyCpp(type: Copy) {
+    from "src/main/cpp/"
+    include "**"
+    into file("${sourceSets.main.java.outputDir}/com/criteo/knn/")
+}
+
+task generateJniClass(type: JavaExec, dependsOn: ['compileConfig', 'copyCpp']) {
+    classpath = files([configurations.javacpp.asPath])
+    main = 'org.bytedeco.javacpp.tools.Builder'
+    args = [
+        '-classpath', sourceSets.main.java.outputDir,
+        '-d', 'src/main/java/',
+        "com.criteo.knn.${KnnLibConfigClass}"
+    ]
+}
+
+task compileLib(type: JavaCompile, dependsOn: 'generateJniClass') {
+    source = fileTree(dir: 'src', include: ["**/${KnnLibClass}.java", "**/${KnnLibConfigClass}.java"])
+    destinationDir = file(sourceSets.main.java.outputDir)
+    classpath = files([configurations.javacpp.asPath])
+}
+
+task generateLibrary(type: JavaExec, dependsOn: 'compileLib') {
+    classpath = files([configurations.javacpp.asPath])
+    main = 'org.bytedeco.javacpp.tools.Builder'
+    args = [
+        '-classpath', sourceSets.main.java.outputDir,
+        '-nodelete',
+        "com.criteo.knn.${KnnLibClass}"
+    ]
+}
+compileJava.dependsOn generateLibrary
+compileTestJava.dependsOn generateLibrary
